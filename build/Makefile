@@ -1,4 +1,4 @@
-VPATH = ../src/:/Users/hth/projects/ladybug/src:/Users/hth/projects/hazelnut/src:/Users/hth/projects/modules41:/Users/hth/projects/hp-41_SWORDS.ROM/
+VPATH = ../src/:/Users/hth/projects/ladybug/src:/Users/hth/projects/boost41/src:/Users/hth/projects/OS4/src:/Users/hth/projects/modules41
 
 .PHONY: all clean
 
@@ -29,13 +29,13 @@ split:
 #
 ###########################################################################
 
-clonix-images.s: ladybug.mod HP67_fun.mod hazelnut.mod SWORDS.mod
+clonix-images.s: OS4.mod ladybug.mod boost.mod
 	clonix -o$@ --nutstudio-source --module clonix-41 --lock-pages cde $+
 
 ClonixSources = clonix.s clonix-images.s
 
 clonix.hex: $(ClonixSources:%.s=%.o)
-	lnpic18 -o $@ ../config/linker-p18f252.scm -llinker-clonix.lst --output-format=intel-hex $^
+	lnpic18 -o $@ ../config/linker-p18f252.scm --list-file linker-clonix.lst --output-format=intel-hex --no-data-init-table-section $^
 
 ###########################################################################
 #
@@ -43,13 +43,13 @@ clonix.hex: $(ClonixSources:%.s=%.o)
 #
 ###########################################################################
 
-clonix-d-images.s: ladybug.mod advantage.mod smath44_3x3.mod
+clonix-d-images.s: advantage.mod OS4.mod boost.mod games.mod HP67_fun.mod ext-io.mod ladybug.mod
 	clonix -o$@ --nutstudio-source --module clonix-d --lock-pages e $+
 
 ClonixDSources = clonix-d.s clonix-d-images.s
 
 clonix-d.hex: $(ClonixDSources:%.s=%.o)
-	lnpic18 -o $@ ../config/linker-p18f2620.scm -llinker-clonix-d.lst --output-format=intel-hex $^
+	lnpic18 -o $@ ../config/linker-p18f2620.scm --list-file linker-clonix-d.lst --output-format=intel-hex --no-data-init-table-section $^
 
 
 ###########################################################################
@@ -60,10 +60,10 @@ clonix-d.hex: $(ClonixDSources:%.s=%.o)
 ###########################################################################
 
 nov-64-h.o: nov-64.s
-	aspic18 $(AFLAGS) -o$@ -lnov-64-h.lst -DHEPAX $<
+	aspic18 $(AFLAGS) -o$@ --list-file nov-64-h.lst -DHEPAX $<
 
 nov-64-mldl.o: nov-64.s
-	aspic18 $(AFLAGS) -o$@ -lnov-64-mldl.lst -DMLDL $<
+	aspic18 $(AFLAGS) -o$@ --list-file nov-64-mldl.lst -DMLDL $<
 
 
 ###########################################################################
@@ -78,13 +78,13 @@ nov-64-mldl.o: nov-64.s
 #
 ###########################################################################
 
-nov-64-h-images.s: hepax.mod ladybug.mod ext-io.mod hazelnut.mod split hepax.mod ladybug.mod HP67_fun.mod games.mod
+nov-64-h-images.s: hepax.mod ladybug.mod ext-io.mod OS4.mod boost.mod split hepax.mod OS4.mod ladybug.mod games.mod
 	clonix -o$@ --nutstudio-source --module nov-64 --lock-pages b $+
 
 Nov64HSources = nov-64-h-images.s romerase.s ram2rom4.s
 
 nov-64-h.hex: $(Nov64HSources:%.s=%.o) nov-64-h.o
-	lnpic18 -o $@ ../config/linker-p18f2620.scm -llinker-nov-64-h.lst --output-format=intel-hex $^
+	lnpic18 -o $@ ../config/linker-p18f2620.scm --list-file linker-nov-64-h.lst --output-format=intel-hex --no-data-init-table-section $^
 
 
 ###########################################################################
@@ -93,13 +93,13 @@ nov-64-h.hex: $(Nov64HSources:%.s=%.o) nov-64-h.o
 #
 ###########################################################################
 
-nov-64-mldl-images.s: ladybug.mod ext-io.mod hazelnut.mod david.mod split ladybug.mod HP67_fun.mod games.mod advantage.mod
+nov-64-mldl-images.s: ladybug.mod ext-io.mod OS4.mod boost.mod split ladybug.mod HP67_fun.mod games.mod advantage.mod
 	clonix -o$@ --nutstudio-source --module nov-64 --start-page=7 --lock-pages 89ab $+
 
 Nov64MLDLSources = nov-64-mldl-images.s romerase.s ram2rom4.s
 
 nov-64-mldl.hex: $(Nov64MLDLSources:%.s=%.o) nov-64-mldl.o
-	lnpic18 -o $@ ../config/linker-p18f2620.scm -llinker-nov-64-mldl.lst --output-format=intel-hex $^
+	lnpic18 -o $@ ../config/linker-p18f2620.scm --list-file linker-nov-64-mldl.lst --output-format=intel-hex --no-data-init-table-section $^
 
 
 ###########################################################################
@@ -116,4 +116,4 @@ nov-64-rambox-images.s:
 Nov64RAMBOXSources = nov-64cy.s nov-64-rambox-images.s
 
 nov-64-rambox.hex: $(Nov64RAMBOXSources:%.s=%.o)
-	lnpic18 -o $@ ../config/linker-p18f2620.scm -llinker-nov-64-rambox.lst --output-format=intel-hex $^
+	lnpic18 -o $@ ../config/linker-p18f2620.scm --list-file linker-nov-64-rambox.lst --output-format=intel-hex --no-data-init-table-section $^

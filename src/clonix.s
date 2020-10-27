@@ -105,12 +105,29 @@ romdb4map       .space  1
 romeb4map       .space  1
 romfb4map       .space  1
 
+bankpg0         .space  1               ; Starts at 0x040. Contains active bank for each page
+bankpg1         .space  1               ; 0x00, 0x20, 0x10 or 0x30 indicating ENBANK1, 2, 3, or 4
+bankpg2         .space  1
+bankpg3         .space  1
+bankpg4         .space  1
+bankpg5         .space  1
+bankpg6         .space  1
+bankpg7         .space  1
+bankpg8         .space  1
+bankpg9         .space  1
+bankpgA         .space  1
+bankpgB         .space  1
+bankpgC         .space  1
+bankpgD         .space  1
+bankpgE         .space  1
+bankpgF         .space  1
+
 addru           .space  1               ; upper 8 bits of ISA address
 addrl           .space  1               ; lower 8 bits of ISA address
 oph2            .space  1               ; high two bits of fetched word
 opl8            .space  1               ; low eight bits of fetched word
-romoff          .space  1               ; Bank-switching offset (0x00=bank1, 0x10=bank2)
-bsmask          .space  1               ; Bank-Switching mask 0xEF
+bsmask          .space  1               ; Bank-Switching mask 0xCF
+;actpgnr         .space  1               ; Active Page Number
 
 
 ; Reset vector
@@ -205,13 +222,35 @@ begin
                 clrf    romeb4map
                 clrf    romfb4map
 
+                clrf    bankpg0
+                clrf    bankpg1
+                clrf    bankpg2
+                clrf    bankpg3
+                clrf    bankpg4
+                clrf    bankpg5
+                clrf    bankpg6
+                clrf    bankpg7
+                clrf    bankpg8
+                clrf    bankpg9
+                clrf    bankpgA
+                clrf    bankpgB
+                clrf    bankpgC
+                clrf    bankpgD
+                clrf    bankpgE
+                clrf    bankpgF
+
                 clrf    addru           ; upper 8 bits of ISA address
                 clrf    addrl           ; lower 8 bits of ISA address
                 clrf    oph2            ; high two bits of fetched word
                 clrf    opl8            ; low eight bits of fetched word
-                clrf    romoff
-                movlw   0xEF
+                clrf    FSR0H
+;                clrf    actpgnr
+;                bsf     actpgnr,6       ; Points to BS page map h'040
+                movlw   0xCF
                 movwf   bsmask
+                clrf    FSR1H
+                clrf    FSR1L
+                bsf     FSR1L,6
 
 ;; load rom mapping
 
@@ -222,17 +261,19 @@ begin
 ;; end load rom mapping
 
 start
-                bsf     INTCON2,6       ; Activates INT0 on rising edge
-                bcf     INTCON,1        ; Resets INT0 bit
-                bsf     INTCON,4        ; Enables INTO
                 bcf     INTCON,GIE      ; Globally disables interrupts.
+                bcf     INTCON,4        ; Disables PWO (B0) interrupt
+                bsf     INTCON2,4       ; Activates INT2 on rising edge (Phi1)
+                bcf     INTCON3,1       ; Resets INT2 bit
+                bsf     INTCON3,4       ; Enables INT2
 
                 sleep                   ; Waits until rising edge on PWO (PORTB,0)
 
+                bcf     INTCON3,4       ; Disables INT2 (Phi1)
+                bsf     INTCON,4        ; Enables PWO (B0) interrupt
                 bcf     INTCON,1        ; Resets INT0 bit after PWO rises.
                 bcf     INTCON2,6       ; Activates INT0 on falling edge
                 bsf     INTCON,GIE      ; Globally enables interrupts.
-                clrf    romoff
 
 syncseek
                 btfsc   NUTSYNC         ; wait for SYNC to go low
@@ -399,10 +440,10 @@ PULSE6
                 btfss   NUTPHI2         ; (8)
                 bra     PULSE7          ; (1, 1bis)
 PULSE7
-                nop                     ; (2)
-                setf    bsmask          ; (3)
-                bcf     bsmask,5        ; (4)
-                bcf     bsmask,4        ; (5)
+                movlw   0xCF            ; (2)
+                movwf   bsmask          ; (3)
+                nop                     ; (4)
+                nop                     ; (5)
                 movf    oph2,W          ; (6)
                 andlw   0x07            ; (7)
                 btfss   NUTPHI2         ; (8)
@@ -419,11 +460,11 @@ bs              rrncf   opl8            ; (5)
 PULSE9
                 andwf   bsmask,F        ; (2)
                 bnz     nobs            ; (3)
-                movwf   romoff          ; (4)
+                movwf   INDF1           ; (4)
 nobs            nop                     ; (5)
                 nop                     ; (6)
                 nop                     ; (7)
-                btfss   NUTPHI2         ; (8)
+nobs2           btfss   NUTPHI2         ; (8)
                 bra     PULSE10         ; (1, 1bis)
 PULSE10
                 nop                     ; (2)
@@ -619,26 +660,26 @@ PULSE31
                 nop                     ; (3)
                 btfsc   NUTISA
                 bsf     addru,7
-                nop                     ; (6)
+                movf    addru,W         ; (6)
 ;               nop                     ; (7)
                 btfss   NUTPHI2         ; (8)
                 bra     PULSE32         ; (1, 1bis)
 PULSE32
-                nop                     ; (2)
-                movf    addru,W
                 andlw   0xF0            ; use the upper four bits ...
                 swapf   WREG
-                addwf   romoff,W
-                movwf   FSR0L           ; as a pointer to the map table
+                movwf   FSR1L
+                nop
+                bsf     FSR1L,6
+                nop
                 btfss   NUTPHI2         ; (8)
                 bra     PULSE33         ; (1, 1bis)
 PULSE33
-                nop                     ; (2)
+                addwf   INDF1,W         ; (2)
+                movwf   FSR0L           ; ...as a pointer to the map table
                 movf    INDF0,W
                 bnz     ours
-                goto    notours         ; eat the next 23 pulses, saving the op code (notours must begin at instr (7))
-ours            nop                     ; (6)
-                nop                     ; (7)
+                goto    notours         ; eat the next 23 pulses, saving the op code (notours must begin at instr (8))
+ours            nop                     ; (7)
                 btfss   NUTPHI2         ; (8)
                 bra     PULSE34         ; (1, 1bis)
 PULSE34
@@ -859,7 +900,6 @@ norot2
 ; END of our ROM loop *********************************
 
 notours
-                nop                     ; (7)
                 btfss   NUTPHI2         ; (8)
                 bra     PULSE34x        ; (1, 1bis)
 PULSE34x
